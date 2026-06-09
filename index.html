@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>致良知．植心田</title>
+    <!-- 引入圓潤字體 M PLUS Rounded 1c -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* Google 登入相關樣式 */
+        .login-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0px;
+            overflow: hidden;
+            border-radius: 8px;
+        }
+
+        /* 讓 Google 登入按鈕的容器填滿並且置中 */
+        .login-container .g_id_signin {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .user-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            height: 100%;
+            padding: 2px 8px;
+        }
+
+        .user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 1.5px solid var(--ink-color);
+            object-fit: cover;
+        }
+
+        .user-container input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-family: var(--font-serif);
+            font-size: 15px;
+            color: var(--ink-color);
+            letter-spacing: 1px;
+            text-align: left;
+            padding: 0;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="g_id_onload"
+        data-client_id="332204127226-1jobg1j7f0efgd91kgbgik1v8pmn33h9.apps.googleusercontent.com"
+        data-callback="handleCredentialResponse">
+    </div>
+    <!-- 卡通風格背景圖 (可由 CSS 控制) -->
+
+    <div class="cartoon-bg"></div>
+
+    <header>
+        <div class="title-container">
+            <h1>致良知．植心田</h1>
+            <div class="user-input-group cartoon-border" id="user-info-area">
+                <!-- 未登入狀態：直接顯示 Google 官方登入按鈕 -->
+                <div id="logged-out-state" class="login-container">
+                    <div class="g_id_signin"
+                        data-type="standard"
+                        data-shape="rectangular"
+                        data-theme="outline"
+                        data-text="signin"
+                        data-size="medium"
+                        data-width="200"
+                        data-logo_alignment="left">
+                    </div>
+                </div>
+                
+                <!-- 已登入狀態 -->
+                <div id="logged-in-state" class="user-container hidden">
+                    <img id="user-avatar" class="user-avatar" src="" alt="頭像">
+                    <input type="text" id="player-name" placeholder="寫下你的名字" autocomplete="off">
+                    <span id="logout-btn" class="settings-icon" title="點擊登出">⚙️</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 右上角七個功能按鈕 -->
+    <nav class="top-right-menu">
+        <div class="menu-item"><button id="btn-collection" class="menu-btn cartoon-border" title="語錄收藏"><span class="menu-icon">錄</span></button></div>
+        <div class="menu-item"><button id="btn-reflection" class="menu-btn cartoon-border" title="省察"><span class="menu-icon">省</span></button></div>
+        <div class="menu-item"><button id="btn-awareness" class="menu-btn cartoon-border" title="覺知生活"><span class="menu-icon">覺</span></button></div>
+        <div class="menu-item"><button id="btn-emotion" class="menu-btn cartoon-border" title="情緒轉化"><span class="menu-icon">情</span></button></div>
+        <div class="menu-item"><button id="btn-practice" class="menu-btn cartoon-border" title="去惡實踐"><span class="menu-icon">惡</span></button></div>
+        <div class="menu-item"><button id="btn-goodness" class="menu-btn cartoon-border" title="為善實踐"><span class="menu-icon">善</span></button></div>
+        <div class="menu-item"><button id="btn-observation" class="menu-btn cartoon-border" title="清明觀測"><span class="menu-icon">觀</span></button></div>
+    </nav>
+
+    <main>
+        <div class="plant-container">
+            <div class="plant-status-bubble cartoon-border hidden" id="watered-bubble">今日已澆水 <span class="check-mark">✔</span></div>
+            <!-- SVG Plant rendering area -->
+            <div id="plant-svg-wrapper">
+                <!-- 初始種子 SVG 將由 JS 插入 -->
+            </div>
+            
+            <div class="level-panel cartoon-border">
+                <div class="level-badge">LV. <span id="level-display">0</span></div>
+                <div class="level-line"></div>
+                <div class="level-label">成長階段</div>
+            </div>
+
+            <!-- 澆水粒子特效層 -->
+            <div id="particles-layer"></div>
+        </div>
+
+        <div class="action-container">
+            <button id="water-btn" class="cartoon-btn big-yellow-btn cartoon-border">
+                <div class="btn-primary-text">灌溉心田</div>
+                <div class="btn-secondary-text">為種子灑上甘露水</div>
+                <span class="sparkle sparkle-left">✨</span>
+                <span class="sparkle sparkle-right">✨</span>
+            </button>
+        </div>
+    </main>
+
+    <!-- 每日簽到 語錄彈窗 -->
+    <div id="quote-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content wooden-border">
+            <div class="modal-inner">
+                <div class="quote-icon">❝</div>
+                <div id="quote-text" class="quote-text"></div>
+                <div id="quote-explanation" class="quote-explanation"></div>
+                <button id="close-modal-btn" class="zen-btn small-btn">
+                    <span class="btn-text">銘 記 於 心</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 語錄收藏簿 彈窗 -->
+    <div id="collection-modal" class="modal hidden">
+        <div class="modal-backdrop" id="collection-backdrop"></div>
+        <div class="scroll-content">
+            <div class="scroll-inner">
+                <button id="close-collection-btn" class="close-scroll-btn">×</button>
+                <div class="scroll-header">
+                    <h2>傳習錄．摘錄手帳</h2>
+                    <div class="scroll-tabs">
+                        <button class="scroll-tab active" data-tab="all">所有語錄</button>
+                        <button class="scroll-tab" data-tab="favorites">喜愛語錄</button>
+                    </div>
+                </div>
+                <div class="scroll-body" id="collection-list">
+                    <!-- 語錄項目將由 JS 插入 -->
+                </div>
+            </div>
+            <!-- 卷軸兩側的木軸裝飾 -->
+            <div class="scroll-roller left-roller"></div>
+            <div class="scroll-roller right-roller"></div>
+        </div>
+    </div>
+
+    <!-- 念頭省察 彈窗 -->
+    <div id="reflection-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="notebook-content wooden-border">
+            <button id="close-reflection-btn" class="close-scroll-btn">×</button>
+            <div class="notebook-inner">
+                <div class="notebook-header">
+                    <h2>念頭省察</h2>
+                </div>
+                
+                <div class="counter-section">
+                    <button id="thought-counter-btn" class="notebook-counter-btn">
+                        <span class="counter-number" id="thought-count-display">0</span>
+                        <span class="counter-label">起心動念</span>
+                    </button>
+                    <button id="thought-reset-btn" class="counter-reset-btn" title="重設歸零">↺</button>
+                </div>
+                
+                <div class="reflection-prompt">
+                    「觀察一天中起心動念的變化，如比較、嫉妒、逃避、貪求、推卸、求表現等。」
+                </div>
+                
+                <div class="reflection-body">
+                    <div id="reflection-list" class="reflection-list">
+                        <!-- 心得列表將由 JS 插入 -->
+                    </div>
+                    
+                    <!-- 新增心得區域 -->
+                    <div class="add-reflection-container">
+                        <textarea id="reflection-input" class="reflection-textarea" placeholder="寫下今日的觀察與反思..." rows="3"></textarea>
+                        <button id="add-reflection-btn" class="add-btn" title="儲存省察">
+                            <span class="plus-icon">+</span> 儲存
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 覺知生活 彈窗 -->
+    <div id="awareness-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="awareness-content">
+            <button id="close-awareness-btn" class="close-scroll-btn">×</button>
+            <div class="awareness-inner">
+                <div class="awareness-header">
+                    <h2>覺知生活</h2>
+                </div>
+                
+                <div class="counter-section">
+                    <button id="awareness-counter-btn" class="breath-counter-btn">
+                        <span class="counter-number" id="awareness-count-display">0</span>
+                        <span class="counter-label">清明自覺</span>
+                    </button>
+                    <button id="awareness-reset-btn" class="counter-reset-btn" title="重設歸零">↺</button>
+                </div>
+                
+                <div class="awareness-prompt">
+                    「在日常小事中保持清明自覺，如吃飯、走路、上課、回訊息、使用手機等。」
+                </div>
+                
+                <div class="awareness-body">
+                    <div id="awareness-list" class="awareness-list">
+                        <!-- 覺知列表將由 JS 插入 -->
+                    </div>
+                    
+                    <!-- 新增覺知區域 -->
+                    <div class="add-awareness-container">
+                        <textarea id="awareness-input" class="awareness-textarea" placeholder="寫下今日的覺知..." rows="2"></textarea>
+                        <button id="add-awareness-btn" class="soft-add-btn" title="儲存覺知">
+                            <span class="plus-icon">+</span> 儲存
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 情緒轉化 彈窗 -->
+    <div id="emotion-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="emotion-content">
+            <!-- 流光與水波紋背景層 -->
+            <div class="light-flow-bg"></div>
+            <div class="ripple-bg"></div>
+            
+            <button id="close-emotion-btn" class="close-scroll-btn">×</button>
+            <div class="emotion-inner">
+                <div class="emotion-header">
+                    <h2>情緒轉化</h2>
+                </div>
+                
+                <div class="counter-section">
+                    <button id="emotion-counter-btn" class="ripple-counter-btn">
+                        <div class="ripple-circle"></div>
+                        <span class="counter-number" id="emotion-count-display">0</span>
+                        <span class="counter-label">停下關照</span>
+                    </button>
+                    <button id="emotion-reset-btn" class="counter-reset-btn" title="重設歸零">↺</button>
+                </div>
+                
+                <div class="emotion-prompt">
+                    「在憤怒、焦慮、沮喪、煩惱、委屈等情緒中，練習停下、關照、回到良知。」
+                </div>
+                
+                <div class="emotion-body">
+                    <div id="emotion-list" class="emotion-list">
+                        <!-- 情緒記錄列表將由 JS 插入 -->
+                    </div>
+                    
+                    <!-- 新增情緒反思區域 -->
+                    <div class="add-emotion-container">
+                        <textarea id="emotion-input" class="emotion-textarea" placeholder="寫下今日的情緒與轉化..." rows="2"></textarea>
+                        <button id="add-emotion-btn" class="flow-add-btn" title="儲存轉化">
+                            <span class="plus-icon">+</span> 儲存
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 去惡實踐 彈窗 -->
+    <div id="practice-modal" class="modal hidden">
+        <div class="modal-backdrop" style="background: rgba(44, 62, 53, 0.8);"></div>
+        <div class="practice-content">
+            <button id="close-practice-btn" class="close-scroll-btn light-close-btn">×</button>
+            <div class="practice-inner">
+                <div class="practice-header">
+                    <h2>去惡實踐</h2>
+                </div>
+                
+                <div class="counter-section">
+                    <button id="practice-counter-btn" class="solid-counter-btn">
+                        <span class="counter-number dark-bg-num" id="practice-count-display">0</span>
+                        <span class="counter-label dark-bg-label">節制 / 轉化</span>
+                    </button>
+                    <button id="practice-reset-btn" class="counter-reset-btn" title="重設歸零">↺</button>
+                </div>
+                
+                <div class="practice-prompt">
+                    「停止、節制或轉化自己明知不妥的氣息、言行與慾望。」
+                </div>
+                
+                <div class="practice-body">
+                    <div id="practice-list" class="practice-list">
+                        <!-- 實踐記錄列表將由 JS 插入 -->
+                    </div>
+                    
+                    <!-- 新增實踐區域 -->
+                    <div class="add-practice-container">
+                        <textarea id="practice-input" class="practice-textarea" placeholder="寫下今日的實踐..." rows="2"></textarea>
+                        <button id="add-practice-btn" class="solid-add-btn" title="儲存實踐">
+                            <span class="plus-icon">+</span> 儲存
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 為善實踐 彈窗 -->
+    <div id="goodness-modal" class="modal hidden">
+        <div class="modal-backdrop" style="background: rgba(247, 245, 240, 0.7);"></div>
+        <div class="goodness-content">
+            <!-- 柔和暖光背景 -->
+            <div class="warm-glow-bg"></div>
+            
+            <button id="close-goodness-btn" class="close-scroll-btn" style="z-index:10;">×</button>
+            <div class="goodness-inner">
+                <!-- 植物元素裝飾 (SVG) -->
+                <svg class="plant-deco top-right-plant" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M100,0 C70,10 50,40 40,80 C50,60 70,50 100,50 Z" fill="#8FA691" opacity="0.6"/>
+                    <path d="M100,20 C80,25 70,45 65,70 C75,55 85,45 100,45 Z" fill="#6A856D" opacity="0.5"/>
+                </svg>
+                <svg class="plant-deco bottom-left-plant" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0,100 C30,90 50,60 60,20 C50,40 30,50 0,50 Z" fill="#8FA691" opacity="0.6"/>
+                    <path d="M0,80 C20,75 30,55 35,30 C25,45 15,55 0,55 Z" fill="#6A856D" opacity="0.5"/>
+                </svg>
+
+                <div class="goodness-header">
+                    <h2>為善實踐</h2>
+                </div>
+                
+                <div class="counter-section">
+                    <button id="goodness-counter-btn" class="warm-counter-btn">
+                        <span class="counter-number" id="goodness-count-display" style="color: var(--ink-color);">0</span>
+                        <span class="counter-label" style="color: var(--wood-color);">真誠利他</span>
+                    </button>
+                    <button id="goodness-reset-btn" class="counter-reset-btn" title="重設歸零">↺</button>
+                </div>
+                
+                <div class="goodness-prompt">
+                    「在具體生活中實踐真誠利他的善言、善行，或完成自己應盡的責任。」
+                </div>
+                
+                <div class="goodness-body">
+                    <div id="goodness-list" class="goodness-list">
+                        <!-- 善行記錄列表將由 JS 插入 -->
+                    </div>
+                    
+                    <!-- 新增善行區域 -->
+                    <div class="add-goodness-container">
+                        <textarea id="goodness-input" class="goodness-textarea" placeholder="寫下今日的善行與體會..." rows="2"></textarea>
+                        <button id="add-goodness-btn" class="warm-add-btn" title="儲存善行">
+                            <span class="plus-icon">+</span> 儲存
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 清明觀測 彈窗 -->
+    <div id="observation-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="observation-content">
+            <button id="close-observation-btn" class="close-scroll-btn">×</button>
+            <div class="observation-inner">
+                <div class="observation-header">
+                    <h2>清明觀測</h2>
+                    <p class="observation-subtitle">數據與內在狀態追蹤</p>
+                </div>
+                
+                <!-- 圖表區 -->
+                <div class="chart-container-wrapper">
+                    <!-- Y 軸標籤 -->
+                    <div class="y-axis-labels">
+                        <span>3</span>
+                        <span>2</span>
+                        <span>1</span>
+                        <span>0</span>
+                        <span>-1</span>
+                        <span>-2</span>
+                        <span>-3</span>
+                    </div>
+                    <!-- 可滾動的 SVG 容器 -->
+                    <div class="chart-scroll-area" id="chart-scroll-area">
+                        <svg id="observation-chart" class="observation-chart" height="240" xmlns="http://www.w3.org/2000/svg">
+                            <!-- 濾鏡定義 -->
+                            <defs>
+                                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feGaussianBlur stdDeviation="3" result="blur" />
+                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                </filter>
+                            </defs>
+                            <!-- 背景網格與零點線將由 JS 插入 -->
+                            <g id="chart-grid"></g>
+                            <!-- 折線與節點將由 JS 插入 -->
+                            <polyline id="chart-line" fill="none" stroke="#899EAC" stroke-width="2" />
+                            <g id="chart-points"></g>
+                            <g id="chart-x-labels"></g>
+                        </svg>
+                    </div>
+                </div>
+                
+                <!-- 輸入區 -->
+                <div class="observation-input-section">
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>日期</label>
+                            <input type="date" id="obs-date" class="zen-input" />
+                        </div>
+                        <div class="input-group">
+                            <label>冥想時長 (分)</label>
+                            <select id="obs-minutes" class="zen-input">
+                                <!-- JS 動態生成 1~60 -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group slider-group">
+                        <label>清明指數: <span id="clarity-value-display">0</span></label>
+                        <div class="slider-wrapper">
+                            <span>-3 (混沌)</span>
+                            <input type="range" id="obs-clarity" class="zen-slider" min="-3" max="3" step="1" value="0">
+                            <span>3 (清明)</span>
+                        </div>
+                    </div>
+                    
+                    <button id="add-observation-btn" class="save-obs-btn">新增紀錄</button>
+                </div>
+                
+                <!-- 歷史紀錄列表區 -->
+                <div id="obs-list" class="obs-list-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 浮動分享按鈕 -->
+    <button id="floating-share-btn" class="cartoon-border" title="結算與分享">📸 結算</button>
+
+    <!-- 隱藏的結算卡片模板 (供 html2canvas 截圖用) -->
+    <div id="share-card-template" class="share-card cartoon-border">
+        <div class="share-card-header">
+            <h2 id="share-player-name">致良知</h2>
+            <div class="share-title">修心結算</div>
+        </div>
+        
+        <!-- 新增的折線圖區塊 -->
+        <div class="share-chart-section">
+            <div class="share-section-title">📊 內在清明觀測</div>
+            <div id="share-chart-wrapper">
+                <!-- 折線圖 SVG 將被複製到這裡 -->
+            </div>
+        </div>
+        
+        <!-- 新增的近期紀錄區塊 -->
+        <div class="share-records-section">
+            <div class="share-section-title">📝 近期修心隨筆</div>
+            <div id="share-record-list" class="share-record-list">
+                <!-- 近期紀錄將由 JS 插入 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 分享圖片彈窗 -->
+    <div id="share-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content cartoon-border" style="max-width: 400px; padding: 20px; text-align: center;">
+            <h2 style="margin-bottom: 15px; font-weight: 800;">您的專屬結算卡片</h2>
+            <div id="share-image-container" style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.2);"></div>
+            <p style="margin-top:15px; font-size:14px; color:#666; font-weight: 700;">✨ 長按或點擊右鍵儲存圖片 ✨</p>
+            <button id="close-share-btn" class="zen-btn small-btn" style="margin-top: 15px;">關閉</button>
+        </div>
+    </div>
+
+    <!-- 背景音樂播放器 -->
+    <audio id="bgm" src="bgm.mp3" loop preload="auto"></audio>
+    <button id="btn-music" class="music-toggle-btn cartoon-border" title="播放/暫停背景音樂">🎵</button>
+
+    <script src="script.js"></script>
+    <script>
+    function applyLoginState(name, picture) {
+        const loggedOutEl = document.getElementById('logged-out-state');
+        const loggedInEl = document.getElementById('logged-in-state');
+        const avatarEl = document.getElementById('user-avatar');
+        const nameInput = document.getElementById('player-name');
+
+        if (loggedOutEl) loggedOutEl.classList.add('hidden');
+        if (loggedInEl) loggedInEl.classList.remove('hidden');
+        if (avatarEl && picture) avatarEl.src = picture;
+        if (nameInput) {
+            nameInput.value = name;
+            // 觸發事件更新 script.js 中的 playerName 變數與 localStorage
+            nameInput.dispatchEvent(new Event('change'));
+        }
+    }
+
+    function decodeJwt(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) {
+            console.error("JWT 解析失敗:", e);
+            return null;
+        }
+    }
+
+    function handleCredentialResponse(response) {
+        try {
+            const responsePayload = decodeJwt(response.credential);
+            if (!responsePayload) return;
+            console.log("Google Login payload:", responsePayload);
+
+            // 儲存 Google 使用者資料
+            localStorage.setItem('googleUser', JSON.stringify({
+                name: responsePayload.name,
+                picture: responsePayload.picture,
+                email: responsePayload.email
+            }));
+            
+            // 更新並儲存玩家名稱
+            localStorage.setItem('playerName', responsePayload.name);
+            
+            // 套用登入狀態
+            applyLoginState(responsePayload.name, responsePayload.picture);
+        } catch (e) {
+            console.error("處理登入憑證時發生錯誤", e);
+        }
+    }
+
+    // 登出功能
+    function logoutUser() {
+        if (confirm("您確定要登出 Google 帳號並清除玩家名稱嗎？")) {
+            localStorage.removeItem('googleUser');
+            localStorage.setItem('playerName', '');
+            
+            // 還原 UI
+            const loggedOutEl = document.getElementById('logged-out-state');
+            const loggedInEl = document.getElementById('logged-in-state');
+            const nameInput = document.getElementById('player-name');
+            
+            if (loggedOutEl) loggedOutEl.classList.remove('hidden');
+            if (loggedInEl) loggedInEl.classList.add('hidden');
+            if (nameInput) {
+                nameInput.value = '';
+                nameInput.dispatchEvent(new Event('change'));
+            }
+            
+            // 停用自動選取 (Google Identity Services)
+            if (window.google && google.accounts && google.accounts.id) {
+                google.accounts.id.disableAutoSelect();
+            }
+        }
+    }
+
+    // 頁面載入時檢查登入狀態
+    document.addEventListener("DOMContentLoaded", () => {
+        const savedUser = localStorage.getItem('googleUser');
+        if (savedUser) {
+            try {
+                const user = JSON.parse(savedUser);
+                applyLoginState(user.name, user.picture);
+            } catch (e) {
+                console.error("讀取已存 Google 使用者資料失敗", e);
+            }
+        }
+        
+        // 綁定齒輪圖示 (Settings Icon) 當作登出按鈕
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                logoutUser();
+            });
+        }
+    });
+    </script>
+</body>
+</html>
